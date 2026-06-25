@@ -116,7 +116,7 @@
 
         /* Área de Conteúdo */
         .content-area {
-            flex-1: 1;
+            flex: 1;
             width: calc(100% - 270px);
         }
 
@@ -155,7 +155,6 @@
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             position: relative;
-            group: hover;
         }
 
         .img-container {
@@ -215,12 +214,33 @@
         }
         .lightbox.active { opacity: 1; pointer-events: auto; }
         .lightbox-img { max-width: 90%; max-height: 85%; object-fit: contain; }
-        .close-btn { position: absolute; top: 20px; right: 25px; color: #fff; font-size: 35px; background: none; border: none; cursor: pointer; }
+        .close-btn { position: absolute; top: 20px; right: 25px; color: #fff; font-size: 35px; background: none; border: none; cursor: pointer; z-index: 1001; }
+        
+        /* Botões de Navegação do Lightbox */
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(42, 42, 42, 0.6);
+            border: none;
+            color: white;
+            font-size: 2.5rem;
+            padding: 15px 20px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background 0.2s;
+            z-index: 1001;
+            user-select: none;
+        }
+        .nav-btn:hover { background: rgba(79, 70, 229, 0.8); }
+        .prev-btn { left: 20px; }
+        .next-btn { right: 20px; }
 
         @media (max-width: 768px) {
             .main-container { flex-direction: column; }
             .sidebar { width: 100%; }
             .content-area { width: 100%; }
+            .nav-btn { padding: 10px 15px; font-size: 1.8rem; }
         }
     </style>
 </head>
@@ -234,8 +254,7 @@
     <div class="main-container">
         <aside class="sidebar">
             <h3>Pastas</h3>
-            <ul class="folder-list" id="folders-container">
-                </ul>
+            <ul class="folder-list" id="folders-container"></ul>
             <button class="btn-side" id="add-folder-btn">+ Criar Pasta</button>
             <hr style="border-color: #333; margin: 15px 0;">
             <div class="folder-item" id="trash-tab">
@@ -253,32 +272,32 @@
                 </div>
             </div>
 
-            <div class="gallery-grid" id="gallery-grid">
-                </div>
+            <div class="gallery-grid" id="gallery-grid"></div>
         </main>
     </div>
 
     <div class="lightbox" id="lightbox">
         <button class="close-btn" id="close-btn">&times;</button>
+        <button class="nav-btn prev-btn" id="prev-btn">&#10094;</button>
         <img class="lightbox-img" id="lightbox-img" src="" alt="">
+        <button class="nav-btn next-btn" id="next-btn">&#10095;</button>
     </div>
 
     <script>
-        // Banco de dados em memória e sincronizado com LocalStorage estrutural
         let appState = {
             folders: ['Minhas Fotos', 'Viagens', 'Trabalho'],
             currentFolder: 'Minhas Fotos',
             isTrashView: false,
-            photos: [] // {id, name, src, folder, isDeleted: false}
+            photos: []
         };
 
-        // Tenta carregar dados anteriores salvos no navegador
+        // Controladores para saber qual foto está aberta e a lista atual exibida
+        let currentPhotosList = [];
+        let currentPhotoIndex = -1;
+
         if(localStorage.getItem('photo_os_state')) {
             const saved = JSON.parse(localStorage.getItem('photo_os_state'));
-            // Como imagens em Base64 podem ser pesadas, salvamos apenas a estrutura das fotos se necessário, 
-            // mas para esse app rodar offline puro, salvaremos tudo no estado local.
             appState = saved;
-            // Garante reset de view ao recarregar
             appState.currentFolder = appState.folders[0] || 'Minhas Fotos';
             appState.isTrashView = false;
         }
@@ -291,7 +310,6 @@
             }
         }
 
-        // Elementos DOM
         const foldersContainer = document.getElementById('folders-container');
         const galleryGrid = document.getElementById('gallery-grid');
         const currentViewTitle = document.getElementById('current-view-title');
@@ -303,8 +321,9 @@
         const lightbox = document.getElementById('lightbox');
         const lightboxImg = document.getElementById('lightbox-img');
         const closeBtn = document.getElementById('close-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
 
-        // Inicialização
         function init() {
             renderFolders();
             renderPhotos();
@@ -330,11 +349,9 @@
                     renderPhotos();
                 });
 
-                // Botão de deletar pasta
                 li.querySelector('.delete-folder-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
                     if(confirm(`Deseja apagar a pasta "${folder}"? As fotos dela irão para a lixeira.`)) {
-                        // Envia fotos da pasta para lixeira
                         appState.photos.forEach(p => {
                             if(p.folder === folder) p.isDeleted = true;
                         });
@@ -349,7 +366,6 @@
                 foldersContainer.appendChild(li);
             });
 
-            // Atualiza aba da Lixeira
             if(appState.isTrashView) {
                 trashTab.classList.add('active');
             } else {
@@ -370,17 +386,18 @@
                 uploadBox.style.display = appState.currentFolder ? 'block' : 'none';
             }
 
-            const filteredPhotos = appState.photos.filter(photo => {
+            // Atualiza a lista global de fotos que estão visíveis no momento
+            currentPhotosList = appState.photos.filter(photo => {
                 if (appState.isTrashView) return photo.isDeleted;
                 return !photo.isDeleted && photo.folder === appState.currentFolder;
             });
 
-            if(filteredPhotos.length === 0) {
+            if(currentPhotosList.length === 0) {
                 galleryGrid.innerHTML = `<p style="color: #666; grid-column: 1/-1; text-align: center; margin-top: 40px;">Nenhuma foto por aqui.</p>`;
                 return;
             }
 
-            filteredPhotos.forEach(photo => {
+            currentPhotosList.forEach((photo, index) => {
                 const card = document.createElement('div');
                 card.className = 'photo-card';
 
@@ -398,17 +415,38 @@
                     </div>
                 `;
 
-                // Clique para abrir o Lightbox
                 card.querySelector('.img-container').addEventListener('click', () => {
-                    lightboxImg.src = photo.src;
-                    lightbox.classList.add('active');
+                    openLightbox(index);
                 });
 
                 galleryGrid.appendChild(card);
             });
         }
 
-        // Ações Globais/Janelas de Fotos (Expostas no escopo global para os cliques do onclick inline)
+        // Função centralizada para abrir o Lightbox no índice correto
+        function openLightbox(index) {
+            if (index >= 0 && index < currentPhotosList.length) {
+                currentPhotoIndex = index;
+                lightboxImg.src = currentPhotosList[currentPhotoIndex].src;
+                lightbox.classList.add('active');
+            }
+        }
+
+        // Funções para mudar de foto na navegação
+        function nextPhoto() {
+            if (currentPhotosList.length === 0) return;
+            let nextIndex = currentPhotoIndex + 1;
+            if (nextIndex >= currentPhotosList.length) nextIndex = 0; // Volta para a primeira
+            openLightbox(nextIndex);
+        }
+
+        function prevPhoto() {
+            if (currentPhotosList.length === 0) return;
+            let prevIndex = currentPhotoIndex - 1;
+            if (prevIndex < 0) prevIndex = currentPhotosList.length - 1; // Vai para a última
+            openLightbox(prevIndex);
+        }
+
         window.deletePhoto = function(id) {
             const photo = appState.photos.find(p => p.id === id);
             if(photo) {
@@ -423,7 +461,6 @@
             const photo = appState.photos.find(p => p.id === id);
             if(photo) {
                 photo.isDeleted = false;
-                // Se a pasta original dele foi excluída, joga para a primeira pasta ativa existente
                 if(!appState.folders.includes(photo.folder)) {
                     photo.folder = appState.folders[0] || 'Minhas Fotos';
                     if(!appState.folders.includes(photo.folder)) appState.folders.push(photo.folder);
@@ -444,7 +481,6 @@
         }
 
         function setupEvents() {
-            // Upload de arquivos
             fileInput.addEventListener('change', (e) => {
                 const files = e.target.files;
                 if(!appState.currentFolder) return;
@@ -468,10 +504,9 @@
                     };
                     reader.readAsDataURL(file);
                 }
-                fileInput.value = ''; // limpa o seletor
+                fileInput.value = '';
             });
 
-            // Criar Pasta
             addFolderBtn.addEventListener('click', () => {
                 const name = prompt("Digite o nome da nova pasta:");
                 if(name && name.trim() !== "") {
@@ -489,7 +524,6 @@
                 }
             });
 
-            // Aba Lixeira
             trashTab.addEventListener('click', () => {
                 appState.isTrashView = true;
                 appState.currentFolder = '';
@@ -497,17 +531,34 @@
                 renderPhotos();
             });
 
-            // Fechar Lightbox
             closeBtn.addEventListener('click', () => lightbox.classList.remove('active'));
-            lightbox.addEventListener('click', (e) => {
-                if (e.target !== lightboxImg && e.target !== closeBtn) lightbox.classList.remove('active');
+            
+            // Eventos de clique nos botões de avançar e retroceder
+            prevBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                prevPhoto();
             });
+            nextBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                nextPhoto();
+            });
+
+            lightbox.addEventListener('click', (e) => {
+                if (e.target !== lightboxImg && e.target !== closeBtn && e.target !== prevBtn && e.target !== nextBtn) {
+                    lightbox.classList.remove('active');
+                }
+            });
+
+            // Atalhos do teclado (Setas e Esc)
             document.addEventListener('keydown', (e) => {
+                if (!lightbox.classList.contains('active')) return;
+                
                 if (e.key === 'Escape') lightbox.classList.remove('active');
+                if (e.key === 'ArrowRight') nextPhoto();
+                if (e.key === 'ArrowLeft') prevPhoto();
             });
         }
 
-        // Executa
         init();
     </script>
 </body>
