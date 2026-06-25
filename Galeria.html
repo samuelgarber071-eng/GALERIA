@@ -6,11 +6,13 @@
     <title>Visualizador de Fotos Offline OS</title>
     <style>
         :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
+            --bg-color: #0b132b;
+            --card-bg: #1c2541;
+            --tab-bg: #22333b;
+            --tab-active: #3a86ff;
             --text-color: #ffffff;
-            --accent-color: #4f46e5;
-            --accent-hover: #6366f1;
+            --accent-color: #00b4d8;
+            --accent-hover: #0077b6;
             --danger-color: #ef4444;
             --danger-hover: #f87171;
             --success-color: #10b981;
@@ -37,7 +39,6 @@
         h1 { margin-bottom: 5px; font-weight: 600; }
         .subtitle { color: #aaa; font-size: 0.9rem; margin-top: 0; }
 
-        /* Sidebar e Layout Principal */
         .main-container {
             display: flex;
             width: 100%;
@@ -45,7 +46,7 @@
             gap: 20px;
         }
 
-        /* Menu lateral (Pastas e Lixeira) */
+        /* Menu lateral - Pastas Principais */
         .sidebar {
             width: 250px;
             background: var(--card-bg);
@@ -67,7 +68,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px;
+            padding: 12px 10px;
             border-radius: 6px;
             cursor: pointer;
             margin-bottom: 5px;
@@ -75,17 +76,19 @@
         }
 
         .folder-item:hover, .folder-item.active {
-            background-color: #2d2d2d;
+            background-color: rgba(255, 255, 255, 0.1);
         }
 
         .folder-item.active {
             border-left: 4px solid var(--accent-color);
+            background-color: rgba(0, 180, 216, 0.15);
         }
 
         .folder-name {
             display: flex;
             align-items: center;
             gap: 8px;
+            font-weight: 500;
         }
 
         .delete-folder-btn {
@@ -114,20 +117,83 @@
         }
         .btn-side:hover { background: #3a3a3a; }
 
-        /* Área de Conteúdo */
+        /* Área de Conteúdo Principal */
         .content-area {
             flex: 1;
             width: calc(100% - 270px);
         }
 
         .toolbar {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .toolbar-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: var(--card-bg);
-            padding: 15px;
-            border-radius: 12px;
             margin-bottom: 20px;
+        }
+
+        /* Container de Subpastas em Abas Horizontais (Inspirado na Imagem) */
+        .subfolder-tabs-container {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            align-items: center;
+        }
+
+        .subfolder-tab {
+            background-color: var(--tab-bg);
+            color: #ccc;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .subfolder-tab:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+
+        .subfolder-tab.active {
+            background-color: var(--tab-active);
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(58, 134, 255, 0.4);
+        }
+
+        .delete-sub-btn {
+            background: none;
+            border: none;
+            color: #ff8585;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+
+        .btn-add-subtab {
+            background: none;
+            border: 1px dashed #666;
+            color: #aaa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-add-subtab:hover {
+            border-color: #fff;
+            color: #fff;
         }
 
         .file-input-label {
@@ -183,7 +249,6 @@
             text-overflow: ellipsis;
         }
 
-        /* Ações do Card */
         .card-actions {
             display: flex;
             justify-content: space-around;
@@ -216,7 +281,6 @@
         .lightbox-img { max-width: 90%; max-height: 85%; object-fit: contain; }
         .close-btn { position: absolute; top: 20px; right: 25px; color: #fff; font-size: 35px; background: none; border: none; cursor: pointer; z-index: 1001; }
         
-        /* Botões de Navegação do Lightbox */
         .nav-btn {
             position: absolute;
             top: 50%;
@@ -232,7 +296,7 @@
             z-index: 1001;
             user-select: none;
         }
-        .nav-btn:hover { background: rgba(79, 70, 229, 0.8); }
+        .nav-btn:hover { background: var(--tab-active); }
         .prev-btn { left: 20px; }
         .next-btn { right: 20px; }
 
@@ -248,7 +312,7 @@
 
     <header>
         <h1>Visualizador de Fotos OS</h1>
-        <p class="subtitle">🔒 100% Offline | Pastas e Lixeira locais</p>
+        <p class="subtitle">🔒 100% Offline | Abas e Lixeira locais</p>
     </header>
 
     <div class="main-container">
@@ -265,11 +329,15 @@
 
         <main class="content-area">
             <div class="toolbar">
-                <h2 id="current-view-title" style="margin:0; font-size: 1.4rem;">Minhas Fotos</h2>
-                <div id="upload-box">
-                    <label for="file-input" class="file-input-label">Adicionar Fotos</label>
-                    <input type="file" id="file-input" accept="image/*" multiple>
+                <div class="toolbar-header">
+                    <h2 id="current-view-title" style="margin:0; font-size: 1.6rem; font-weight: 600;">Minhas Fotos</h2>
+                    <div id="upload-box">
+                        <label for="file-input" class="file-input-label">Adicionar Fotos</label>
+                        <input type="file" id="file-input" accept="image/*" multiple>
+                    </div>
                 </div>
+                
+                <div class="subfolder-tabs-container" id="subfolder-tabs-container"></div>
             </div>
 
             <div class="gallery-grid" id="gallery-grid"></div>
@@ -284,33 +352,37 @@
     </div>
 
     <script>
+        // Estrutura adaptada: cada pasta possui suas subpastas (abas)
         let appState = {
-            folders: ['Minhas Fotos', 'Viagens', 'Trabalho'],
-            currentFolder: 'Minhas Fotos',
+            folders: [
+                { name: 'Minhas bandeiras', subfolders: ['Salvo', 'Estrelado'] },
+                { name: 'Viagens', subfolders: ['Praia', 'Camping'] }
+            ],
+            currentFolder: 'Minhas bandeiras',
+            currentSubfolder: 'Salvo',
             isTrashView: false,
-            photos: []
+            photos: [] // {id, name, src, folder, subfolder, isDeleted: false}
         };
 
-        // Controladores para saber qual foto está aberta e a lista atual exibida
         let currentPhotosList = [];
         let currentPhotoIndex = -1;
 
-        if(localStorage.getItem('photo_os_state')) {
-            const saved = JSON.parse(localStorage.getItem('photo_os_state'));
-            appState = saved;
-            appState.currentFolder = appState.folders[0] || 'Minhas Fotos';
-            appState.isTrashView = false;
+        if(localStorage.getItem('photo_os_tabs_state')) {
+            appState = JSON.parse(localStorage.getItem('photo_os_tabs_state'));
+        } else {
+            saveState();
         }
 
         function saveState() {
             try {
-                localStorage.setItem('photo_os_state', JSON.stringify(appState));
+                localStorage.setItem('photo_os_tabs_state', JSON.stringify(appState));
             } catch (e) {
-                console.log("Aviso: Limite de cota do LocalStorage atingido para persistência longa. As fotos ainda funcionam nesta sessão.");
+                console.log("Aviso: Limite do LocalStorage atingido.");
             }
         }
 
         const foldersContainer = document.getElementById('folders-container');
+        const subfolderTabsContainer = document.getElementById('subfolder-tabs-container');
         const galleryGrid = document.getElementById('gallery-grid');
         const currentViewTitle = document.getElementById('current-view-title');
         const fileInput = document.getElementById('file-input');
@@ -326,40 +398,43 @@
 
         function init() {
             renderFolders();
-            renderPhotos();
+            renderSubfoldersAndPhotos();
             setupEvents();
         }
 
+        // Renderiza a barra lateral (Pastas Principais)
         function renderFolders() {
             foldersContainer.innerHTML = '';
-            appState.folders.forEach(folder => {
+            appState.folders.forEach(folderObj => {
                 const li = document.createElement('li');
-                li.className = `folder-item ${appState.currentFolder === folder && !appState.isTrashView ? 'active' : ''}`;
+                li.className = `folder-item ${appState.currentFolder === folderObj.name && !appState.isTrashView ? 'active' : ''}`;
                 
                 li.innerHTML = `
-                    <span class="folder-name">📁 ${folder}</span>
-                    <button class="delete-folder-btn" data-folder="${folder}">&times;</button>
+                    <span class="folder-name">📁 ${folderObj.name}</span>
+                    <button class="delete-folder-btn" data-folder="${folderObj.name}">&times;</button>
                 `;
 
                 li.addEventListener('click', (e) => {
                     if(e.target.classList.contains('delete-folder-btn')) return;
-                    appState.currentFolder = folder;
+                    appState.currentFolder = folderObj.name;
+                    appState.currentSubfolder = folderObj.subfolders[0] || '';
                     appState.isTrashView = false;
                     renderFolders();
-                    renderPhotos();
+                    renderSubfoldersAndPhotos();
                 });
 
                 li.querySelector('.delete-folder-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if(confirm(`Deseja apagar a pasta "${folder}"? As fotos dela irão para a lixeira.`)) {
+                    if(confirm(`Apagar a pasta "${folderObj.name}"? Tudo dentro dela irá para a lixeira.`)) {
                         appState.photos.forEach(p => {
-                            if(p.folder === folder) p.isDeleted = true;
+                            if(p.folder === folderObj.name) p.isDeleted = true;
                         });
-                        appState.folders = appState.folders.filter(f => f !== folder);
-                        appState.currentFolder = appState.folders[0] || '';
+                        appState.folders = appState.folders.filter(f => f.name !== folderObj.name);
+                        appState.currentFolder = appState.folders[0] ? appState.folders[0].name : '';
+                        appState.currentSubfolder = appState.folders[0] ? (appState.folders[0].subfolders[0] || '') : '';
                         saveState();
                         renderFolders();
-                        renderPhotos();
+                        renderSubfoldersAndPhotos();
                     }
                 });
 
@@ -375,32 +450,95 @@
             trashCount.textContent = `(${tCount})`;
         }
 
-        function renderPhotos() {
+        // Renderiza as Subpastas (Abas horizontais) e o Grid de Fotos correspondente
+        function renderSubfoldersAndPhotos() {
+            subfolderTabsContainer.innerHTML = '';
             galleryGrid.innerHTML = '';
-            
+
             if (appState.isTrashView) {
                 currentViewTitle.textContent = "Lixeira";
                 uploadBox.style.display = 'none';
+                subfolderTabsContainer.style.display = 'none';
+
+                currentPhotosList = appState.photos.filter(p => p.isDeleted);
             } else {
-                currentViewTitle.textContent = appState.currentFolder || "Nenhuma pasta selecionada";
-                uploadBox.style.display = appState.currentFolder ? 'block' : 'none';
+                subfolderTabsContainer.style.display = 'flex';
+                currentViewTitle.textContent = appState.currentFolder || "Nenhuma pasta";
+                
+                let currentFolderObj = appState.folders.find(f => f.name === appState.currentFolder);
+                
+                if (currentFolderObj) {
+                    uploadBox.style.display = appState.currentSubfolder ? 'block' : 'none';
+
+                    // Criar as abas horizontais para cada subpasta
+                    currentFolderObj.subfolders.forEach(subName => {
+                        const tab = document.createElement('div');
+                        tab.className = `subfolder-tab ${appState.currentSubfolder === subName ? 'active' : ''}`;
+                        tab.innerHTML = `
+                            ${subName}
+                            <button class="delete-sub-btn">&times;</button>
+                        `;
+
+                        tab.addEventListener('click', (e) => {
+                            if(e.target.classList.contains('delete-sub-btn')) return;
+                            appState.currentSubfolder = subName;
+                            renderSubfoldersAndPhotos();
+                        });
+
+                        tab.querySelector('.delete-sub-btn').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if(confirm(`Remover a subpasta "${subName}"? Suas fotos correspondentes irão para a lixeira.`)) {
+                                appState.photos.forEach(p => {
+                                    if(p.folder === appState.currentFolder && p.subfolder === subName) p.isDeleted = true;
+                                });
+                                currentFolderObj.subfolders = currentFolderObj.subfolders.filter(s => s !== subName);
+                                appState.currentSubfolder = currentFolderObj.subfolders[0] || '';
+                                saveState();
+                                renderFolders();
+                                renderSubfoldersAndPhotos();
+                            }
+                        });
+
+                        subfolderTabsContainer.appendChild(tab);
+                    });
+
+                    // Adiciona o botão dinâmico "+ Nova Aba" no fim da linha de abas
+                    const addTabBtn = document.createElement('button');
+                    addTabBtn.className = 'btn-add-subtab';
+                    addTabBtn.textContent = '+ Nova Subpasta';
+                    addTabBtn.addEventListener('click', () => {
+                        const name = prompt("Nome da nova subpasta (Aba):");
+                        if(name && name.trim() !== "") {
+                            const cleanName = name.trim();
+                            if(currentFolderObj.subfolders.includes(cleanName)) {
+                                alert("Essa subpasta já existe!");
+                                return;
+                            }
+                            currentFolderObj.subfolders.push(cleanName);
+                            appState.currentSubfolder = cleanName;
+                            saveState();
+                            renderSubfoldersAndPhotos();
+                        }
+                    });
+                    subfolderTabsContainer.appendChild(addTabBtn);
+
+                    // Filtrar as fotos da combinação Pasta + Subpasta Ativa
+                    currentPhotosList = appState.photos.filter(p => !p.isDeleted && p.folder === appState.currentFolder && p.subfolder === appState.currentSubfolder);
+                } else {
+                    uploadBox.style.display = 'none';
+                    currentPhotosList = [];
+                }
             }
 
-            // Atualiza a lista global de fotos que estão visíveis no momento
-            currentPhotosList = appState.photos.filter(photo => {
-                if (appState.isTrashView) return photo.isDeleted;
-                return !photo.isDeleted && photo.folder === appState.currentFolder;
-            });
-
+            // Renderização prática dos Cards na Grid
             if(currentPhotosList.length === 0) {
-                galleryGrid.innerHTML = `<p style="color: #666; grid-column: 1/-1; text-align: center; margin-top: 40px;">Nenhuma foto por aqui.</p>`;
+                galleryGrid.innerHTML = `<p style="color: #666; grid-column: 1/-1; text-align: center; margin-top: 40px;">Nenhuma foto encontrada nesta seção.</p>`;
                 return;
             }
 
             currentPhotosList.forEach((photo, index) => {
                 const card = document.createElement('div');
                 card.className = 'photo-card';
-
                 card.innerHTML = `
                     <div class="img-container">
                         <img src="${photo.src}" alt="${photo.name}">
@@ -415,15 +553,11 @@
                     </div>
                 `;
 
-                card.querySelector('.img-container').addEventListener('click', () => {
-                    openLightbox(index);
-                });
-
+                card.querySelector('.img-container').addEventListener('click', () => openLightbox(index));
                 galleryGrid.appendChild(card);
             });
         }
 
-        // Função centralizada para abrir o Lightbox no índice correto
         function openLightbox(index) {
             if (index >= 0 && index < currentPhotosList.length) {
                 currentPhotoIndex = index;
@@ -432,18 +566,17 @@
             }
         }
 
-        // Funções para mudar de foto na navegação
         function nextPhoto() {
             if (currentPhotosList.length === 0) return;
             let nextIndex = currentPhotoIndex + 1;
-            if (nextIndex >= currentPhotosList.length) nextIndex = 0; // Volta para a primeira
+            if (nextIndex >= currentPhotosList.length) nextIndex = 0;
             openLightbox(nextIndex);
         }
 
         function prevPhoto() {
             if (currentPhotosList.length === 0) return;
             let prevIndex = currentPhotoIndex - 1;
-            if (prevIndex < 0) prevIndex = currentPhotosList.length - 1; // Vai para a última
+            if (prevIndex < 0) prevIndex = currentPhotosList.length - 1;
             openLightbox(prevIndex);
         }
 
@@ -453,7 +586,7 @@
                 photo.isDeleted = true;
                 saveState();
                 renderFolders();
-                renderPhotos();
+                renderSubfoldersAndPhotos();
             }
         }
 
@@ -461,29 +594,36 @@
             const photo = appState.photos.find(p => p.id === id);
             if(photo) {
                 photo.isDeleted = false;
-                if(!appState.folders.includes(photo.folder)) {
-                    photo.folder = appState.folders[0] || 'Minhas Fotos';
-                    if(!appState.folders.includes(photo.folder)) appState.folders.push(photo.folder);
+                let folderObj = appState.folders.find(f => f.name === photo.folder);
+                if(!folderObj) {
+                    if(appState.folders.length === 0) {
+                        appState.folders.push({ name: 'Restaurados', subfolders: ['Geral'] });
+                    }
+                    photo.folder = appState.folders[0].name;
+                    photo.subfolder = appState.folders[0].subfolders[0] || 'Geral';
+                } else if(!folderObj.subfolders.includes(photo.subfolder)) {
+                    if(folderObj.subfolders.length === 0) folderObj.subfolders.push('Geral');
+                    photo.subfolder = folderObj.subfolders[0];
                 }
                 saveState();
                 renderFolders();
-                renderPhotos();
+                renderSubfoldersAndPhotos();
             }
         }
 
         window.permaDeletePhoto = function(id) {
-            if(confirm("Tem certeza que deseja apagar permanentemente esta foto? Esta ação não pode ser desfeita.")) {
+            if(confirm("Deseja apagar permanentemente?")) {
                 appState.photos = appState.photos.filter(p => p.id !== id);
                 saveState();
                 renderFolders();
-                renderPhotos();
+                renderSubfoldersAndPhotos();
             }
         }
 
         function setupEvents() {
             fileInput.addEventListener('change', (e) => {
                 const files = e.target.files;
-                if(!appState.currentFolder) return;
+                if(!appState.currentFolder || !appState.currentSubfolder) return;
 
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
@@ -496,11 +636,12 @@
                             name: file.name,
                             src: evt.target.result,
                             folder: appState.currentFolder,
+                            subfolder: appState.currentSubfolder,
                             isDeleted: false
                         });
                         saveState();
                         renderFolders();
-                        renderPhotos();
+                        renderSubfoldersAndPhotos();
                     };
                     reader.readAsDataURL(file);
                 }
@@ -508,40 +649,34 @@
             });
 
             addFolderBtn.addEventListener('click', () => {
-                const name = prompt("Digite o nome da nova pasta:");
+                const name = prompt("Nome da nova Pasta Principal:");
                 if(name && name.trim() !== "") {
                     const cleanName = name.trim();
-                    if(appState.folders.includes(cleanName)) {
-                        alert("Uma pasta com esse nome já existe!");
+                    if(appState.folders.some(f => f.name === cleanName)) {
+                        alert("Essa pasta já existe!");
                         return;
                     }
-                    appState.folders.push(cleanName);
+                    appState.folders.push({ name: cleanName, subfolders: ['Geral'] });
                     appState.currentFolder = cleanName;
+                    appState.currentSubfolder = 'Geral';
                     appState.isTrashView = false;
                     saveState();
                     renderFolders();
-                    renderPhotos();
+                    renderSubfoldersAndPhotos();
                 }
             });
 
             trashTab.addEventListener('click', () => {
                 appState.isTrashView = true;
                 appState.currentFolder = '';
+                appState.currentSubfolder = '';
                 renderFolders();
-                renderPhotos();
+                renderSubfoldersAndPhotos();
             });
 
             closeBtn.addEventListener('click', () => lightbox.classList.remove('active'));
-            
-            // Eventos de clique nos botões de avançar e retroceder
-            prevBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                prevPhoto();
-            });
-            nextBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                nextPhoto();
-            });
+            prevBtn.addEventListener('click', (e) => { e.stopPropagation(); prevPhoto(); });
+            nextBtn.addEventListener('click', (e) => { e.stopPropagation(); nextPhoto(); });
 
             lightbox.addEventListener('click', (e) => {
                 if (e.target !== lightboxImg && e.target !== closeBtn && e.target !== prevBtn && e.target !== nextBtn) {
@@ -549,10 +684,8 @@
                 }
             });
 
-            // Atalhos do teclado (Setas e Esc)
             document.addEventListener('keydown', (e) => {
                 if (!lightbox.classList.contains('active')) return;
-                
                 if (e.key === 'Escape') lightbox.classList.remove('active');
                 if (e.key === 'ArrowRight') nextPhoto();
                 if (e.key === 'ArrowLeft') prevPhoto();
